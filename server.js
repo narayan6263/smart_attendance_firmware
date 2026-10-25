@@ -242,6 +242,8 @@ const { parse } = require('csv-parse/sync');
 const fs = require('fs');
 const os = require('os');
 const { execFile } = require('child_process');
+require('dotenv').config();
+
 
 const PORT = Number(process.env.PORT || 9000);
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/smart_attendance';
@@ -743,10 +745,30 @@ app.post('/api/timetable/import', auth, adminOnly, upload.single('file'), h(asyn
 app.get('/students-template.csv', (req, res) => { res.attachment('students-template.csv').type('text/csv').send('uid,name,rollNo,className,group\n04 A3 1B 2C,Rahul Sharma,1,25MAM-2,B\n'); });
 
 /* ---------- start ---------- */
-(async () => {
-  try {
-    await mongoose.connect(MONGO_URI);
-    console.log('MongoDB connected');
-    app.listen(PORT, '0.0.0.0', () => console.log(`Smart Attendance: http://localhost:${PORT} | device API: POST /api/scan`));
-  } catch (e) { console.error('MongoDB connection failed:', e.message); process.exit(1); }
-})();
+// (async () => {
+//   try {
+//     await mongoose.connect(MONGO_URI);
+//     console.log('MongoDB connected');
+//     app.listen(PORT, '0.0.0.0', () => console.log(`Smart Attendance: http://localhost:${PORT} | device API: POST /api/scan`));
+//   } catch (e) { console.error('MongoDB connection failed:', e.message); process.exit(1); }
+// })();
+
+if (process.env.VERCEL) {
+  mongoose.connect(MONGO_URI)
+    .then(() => console.log('MongoDB connected'))
+    .catch(err => console.error('MongoDB error:', err.message));
+
+  module.exports = app;
+} else {
+  mongoose.connect(MONGO_URI)
+    .then(() => {
+      console.log('MongoDB connected');
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Smart Attendance running on port ${PORT}`);
+      });
+    })
+    .catch(err => {
+      console.error('MongoDB connection failed:', err.message);
+      process.exit(1);
+    });
+}
